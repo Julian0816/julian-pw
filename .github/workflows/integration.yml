@@ -21,17 +21,25 @@ jobs:
         with:
           node-version: '20'  # Specify the Node.js version
 
+      - name: Cache Node.js modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: Install Dependencies
         run: npm ci  # Use `npm ci` for a faster, more reliable installation
 
       - name: Build
         run: npm run build
 
+      # Uncomment the following lines if you have tests to run
       # - name: Run Tests
       #   run: npm test
       #   continue-on-error: true  # Optional: continue if tests fail
 
-  # Deploy job starts here
   deploy:
     needs: build-and-test  # This ensures deploy only runs if build-and-test succeeds
     runs-on: ubuntu-latest
