@@ -7,6 +7,7 @@ export default function Home() {
       <h2 className="text-green-200">Is this a row?</h2>
       <h3 className="font-bold text-pink-400">This is bolt</h3>
       <p>Mari date brillo</p>
+      <p>This is really cool I am making this changes from my windoes laptop online</p>
     </main>
   );
 }
