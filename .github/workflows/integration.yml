@@ -1,46 +1,60 @@
-name: CI/CD Pipeline for Next.js Application
-
-on:
-  push:
-    branches:
-      - main  # Trigger on push to the main branch; adjust as needed
-  pull_request:
-    branches:
-      - main  # Trigger on PRs to the main branch; adjust as needed
-
+name: build-test-deploy
+on: push
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest  # Use a Linux runner
-
-    steps:
-      - name: Check Out Repository
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'  # Specify the Node.js version
-
-      - name: Install Dependencies
-        run: npm ci  # Use `npm ci` for a faster, more reliable installation
-
-      - name: Build
-        run: npm run build
-
-      # - name: Run Tests
-      #   run: npm test
-      #   continue-on-error: true  # Optional: continue if tests fail
-
-  # Deploy job starts here
-  deploy:
-    needs: build-and-test  # This ensures deploy only runs if build-and-test succeeds
+  build:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'  # Only deploy on push to main
     steps:
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v20
+      - name: checkout repo
+        uses: actions/checkout@v4
+      - name: use node.js
+        uses: actions/setup-node@v4
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}  # Vercel token stored in GitHub secrets
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}  # Your Vercel team/org ID
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}  # Your Vercel project ID
-          # Add other options based on your deployment needs
+          node-version: '18.x'
+      - run: npm install
+      - run: npm run build
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v4
+      - name: use node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+      - run: npm install
+      - run: npm run test
+  deploy:
+    needs: test
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: production
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: use node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+      - name: configure GitHub pages
+        uses: actions/configure-pages@v4
+        with:
+          static_site_generator: next
+      - run: npm install
+      - run: npm run build
+      - name: Ensure output directory exists
+        run: mkdir -p ./out
+      - name: upload artifacts
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "./out"
+      - name: deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
